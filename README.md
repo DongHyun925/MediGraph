@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./docs/images/welcome.png" width="800" alt="MediGraph Banner" />
   <h1>🩺 MediGraph</h1>
-  <p><b>LangGraph 기반 지능형 의료 진단 및 팩트체크 시스템</b></p>
+  <p><b>LangGraph 기반 지능형 의료 진단 및 팩트체크 멀티 에이전트 시스템</b></p>
 
   <div>
     <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
@@ -26,39 +26,85 @@
 
 ## 🌟 개요
 
-**MediGraph**는 단순한 챗봇을 넘어, 복잡한 의료 진단 과정을 정교한 **Multi-agent 워크플로우**로 구현한 지능형 에이전트입니다. 환자의 안전을 최우선으로 하며, 의사와의 소통을 돕는 객관적인 데이터를 생성합니다.
+**MediGraph**는 단순한 챗봇을 넘어, 복잡한 의료 진단 과정을 정교한 **Multi-agent 워크플로우**로 구현한 지능형 에이전트입니다. LangGraph를 통해 각 단계별로 특화된 에이전트들이 협력하여, 환자의 안전을 최우선으로 하고 의사와의 소통을 돕는 객관적인 데이터를 생성합니다.
 
 ## ✨ 핵심 기능
 
 ### 🛡️ **지능형 문진 & 응급 감지**
-- **Symptom Analyzer**: 초기 증상을 분석하고 부족한 정보가 있을 경우 추가 질문을 자동으로 생성합니다.
-- **Emergency Monitor**: 흉통, 호흡 곤란 등 위험 징후 포착 시 **즉각적으로 119 신고 가이드**를 제시합니다.
+- **Symptom Analyzer**: 사용자의 초기 증상을 분석하고, 진단에 필수적인 정보(위치, 양상, 지속 시간 등)가 부족할 경우 추가 질문을 자동으로 유도합니다.
+- **Emergency Monitor**: 흉통, 호흡 곤란 등 골든타임이 중요한 위험 징후 포착 시 **즉각적으로 119 신고 가이드**를 제시합니다.
 
 ### 🔍 **RAG 기반 팩트 체크**
-- 검색된 의학적 근거가 충분한지 AI가 스스로 평가(Critic)하고 부족할 경우 재검색을 수행합니다.
-- 최종 진단은 실제 논문 및 가이드라인과 대조되어 **근거 신뢰도(Fact-check Confidence)**가 부여됩니다.
+- **Tavily Search** 연동을 통해 최신 의학 정보를 수집합니다.
+- **Research Critic**: 수집된 정보가 충분한지 AI가 스스로 평가하고, 부족할 경우 검색 쿼리를 수정하여 재검색을 수행합니다.
+- **Fact Checker**: 최종 진단 가설을 의학적 가이드라인과 대조하여 **근거 신뢰도(Fact-check Confidence)**를 산출합니다.
 
 ### 📋 **닥터 패스 (Doctor Pass)**
 - 환자의 주관적 표현을 의료진이 이해하기 쉬운 **객관적 히스토리**로 변환합니다.
-- 진단 의견을 배제한 '사실 중심 요약'으로 진료 효율성을 극대화합니다.
+- AI의 진단 의견을 완전히 배제한 '사실 중심 요약'을 통해 진료의 효율성을 극대화합니다.
 
 ---
 
-## 🏗️ 시스템 아키텍처
+## 🏗️ AI 워크플로우 기술 심화 (Deep Dive)
+
+MediGraph의 핵심은 **Stateful Multi-agent 시스템**입니다. 각 노드는 독립적인 역할을 수행하며 공유된 `State`를 기반으로 의사결정을 내립니다.
+
+### 🔄 **에이전트 워크플로우 아키텍처**
 
 ```mermaid
 graph TD
     User([사용자]) --> SA[Symptom Analyzer]
-    SA -- 부족한 정보 발생 --> QG[Question Generator]
+    SA -- 정보 부족 --> QG[Question Generator]
     QG --> User
     SA -- 정보 충분 --> SR[Specialist Router]
-    SR -- 응급 상황 --> ER[Emergency Response]
-    SR -- 일반 증상 --> RAG[Medical RAG]
-    RAG --> Critic[Research Critic]
-    Critic -- 정보 부족 --> RAG
-    Critic -- 충분 --> DG[Diagnosis Generator]
-    DG --> FC[Fact Checker]
-    FC --> Final([최종 리포트])
+    
+    subgraph "응급 & 특수 상황"
+        SR -- 응급 상황 --> ER[Emergency Response]
+        SR -- 약물 확인 --> MS[Medication Search]
+    end
+    
+    subgraph "의학 연구 & 검증"
+        SR -- 분석 시작 --> RAG[Medical RAG]
+        RAG --> Critic[Research Critic]
+        Critic -- 재검색 필요 --> RAG
+        Critic -- 충분 --> DG[Diagnosis Generator]
+        DG --> FC[Fact Checker]
+    end
+    
+    FC --> Final([최중 리포트 생성])
+    ER --> Final
+```
+
+### 🧠 **주요 기술적 해결 포인트**
+1. **Persona Fluff Filter**: 사용자가 불필요하다고 판단하는 AI의 상투적인 공감 멘트(예: "많이 불편하시겠어요")를 정규식 기반 후처리 필터로 완벽하게 제거했습니다.
+2. **Reliability Guard**: LLM의 할루시네이션(환각)을 방지하기 위해, RAG로 수집된 근거와 최종 진단 사이의 일치도를 별도의 노드에서 검증하는 'Self-Correction' 루프를 구현했습니다.
+3. **Strict Fact-Check**: 닥터패스 요약 카드 생성 시 `AI Opinion`과 `Patient Fact`를 엄격하게 분리하도록 프롬프트 엔지니어링을 적용했습니다.
+
+---
+
+## 📂 프로젝트 구조 (Project Structure)
+
+```text
+medicalLLM/
+├── src/
+│   ├── api.py              # FastAPI 서버 엔드포인트
+│   ├── graph.py            # LangGraph 워크플로우 정의 및 노드 연결
+│   ├── state.py            # 에이전트 상태(State) 스키마 정의
+│   ├── nodes/              # 각 단계별 에이전트(Node) 로직
+│   │   ├── symptom_analyzer.py
+│   │   ├── question_generator.py
+│   │   ├── diagnosis_generator.py
+│   │   ├── fact_checker.py
+│   │   ├── emergency.py
+│   │   └── node_utils.py   # 페르소나 필터 및 공통 유틸리티
+│   └── utils/
+│       ├── llm.py          # LLM 설정 및 캐싱
+│       └── crypto.js       # (Frontend 연동) 데이터 암호화
+├── client/                 # React (Vite) 프론트엔드
+│   ├── src/
+│   │   ├── components/     # UI 컴포넌트 (Chat, Modal 등)
+│   │   └── utils/          # LocalStorage 암호화 로직
+└── README.md
 ```
 
 ---
@@ -94,6 +140,13 @@ graph TD
 ### Frontend (React)
 1. `npm install`
 2. `npm run dev`
+
+---
+
+## 🗺️ 향후 로드맵
+- [ ] **멀티모달 진단**: 환부 사진 촬영 및 분석 기능 추가
+- [ ] **OCR 영수증 분석**: 약국 처방전/성분 분석 자동화
+- [ ] **음성 인터뷰**: 거동이 불편한 환자를 위한 음성 문진 시스템
 
 ---
 
