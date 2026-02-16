@@ -1,0 +1,23 @@
+
+>>> User: 속이 쓰려요
+Node: [symptom_analyzer]
+Node: [question_generator]
+--- Step completed successfully ---
+
+>>> User: 명치
+Node: [symptom_analyzer]
+Node: [question_generator]
+--- Step completed successfully ---
+
+>>> User: 소화제 먹었어요
+Node: [symptom_analyzer]
+Node: [question_generator]
+--- Step completed successfully ---
+Traceback (most recent call last):
+  File "C:\Users\myjew\medicalLLM\tests\user_scenario_test.py", line 68, in <module>
+    test_user_scenario()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\myjew\medicalLLM\tests\user_scenario_test.py", line 65, in test_user_scenario
+    print("\n\u2705 User scenario completed without crash.")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp949' codec can't encode character '\u2705' in position 2: illegal multibyte sequence
